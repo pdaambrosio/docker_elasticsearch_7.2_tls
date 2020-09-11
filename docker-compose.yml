@@ -1,0 +1,130 @@
+version: '3.6'
+services:
+  es01:
+    image: elasticsearch:7.2.0
+    container_name: elastic01
+    environment:
+      - node.name=es01
+      - cluster.name=docker-cluster
+      - discovery.seed_hosts=es01,es02,es03
+      - cluster.initial_master_nodes=es01,es02,es03
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms128m -Xmx128m"
+      - ELASTIC_PASSWORD=secret
+    secrets:
+      - source: elasticsearch.compose
+        target: /usr/share/elasticsearch/config/elasticsearch.yml
+      - source: elastic-certificates.p12
+        target: /usr/share/elasticsearch/config/elastic-certificates.p12
+    ports:
+      - 9201:9200
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 262144
+        hard: 262144
+    networks:
+      - elk-net
+    healthcheck:
+      test: ["CMD", "curl", "-s", "elastic:secret","-XGET", "http://elastic01:9200"]
+      interval: 1m
+      timeout: 10s
+      retries: 2
+      start_period: 20s
+ 
+  es02:
+    image: elasticsearch:7.2.0
+    container_name: elastic02
+    environment:
+      - node.name=es02
+      - cluster.name=docker-cluster
+      - discovery.seed_hosts=es01,es02,es03
+      - cluster.initial_master_nodes=es01,es02,es03
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms128m -Xmx128m"
+      - ELASTIC_PASSWORD=secret
+    secrets:
+      - source: elasticsearch.compose
+        target: /usr/share/elasticsearch/config/elasticsearch.yml
+      - source: elastic-certificates.p12
+        target: /usr/share/elasticsearch/config/elastic-certificates.p12
+    ports:
+      - 9202:9200
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 262144
+        hard: 262144
+    networks:
+      - elk-net
+    depends_on: ['es01']
+    healthcheck:
+      test: ["CMD", "curl", "-s", "elastic:secret","-XGET", "http://elastic02:9200"]
+      interval: 1m
+      timeout: 10s
+      retries: 2
+      start_period: 20s
+
+  es03:
+    image: elasticsearch:7.2.0
+    container_name: elastic03
+    environment:
+      - node.name=es03
+      - cluster.name=docker-cluster
+      - discovery.seed_hosts=es01,es02,es03
+      - cluster.initial_master_nodes=es01,es02,es03
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms128m -Xmx128m"
+      - ELASTIC_PASSWORD=secret
+    secrets:
+      - source: elasticsearch.compose
+        target: /usr/share/elasticsearch/config/elasticsearch.yml
+      - source: elastic-certificates.p12
+        target: /usr/share/elasticsearch/config/elastic-certificates.p12
+    ports:
+      - 9203:9200
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 262144
+        hard: 262144
+    networks:
+      - elk-net
+    depends_on: ['es02']
+    healthcheck:
+      test: ["CMD", "curl", "-s", "elastic:secret","-XGET", "http://elastic03:9200"]
+      interval: 1m
+      timeout: 10s
+      retries: 2
+      start_period: 20s
+
+  kibana:
+    image: kibana:7.2.0
+    container_name: kibana01
+    environment:
+      - SERVER_HOST=0.0.0.0
+    volumes:
+      - ./kibana.yml:/usr/share/kibana/config/kibana.yml:rw
+    ports:
+      - 5601:5601
+    networks:
+      - elk-net
+    depends_on:
+      - es03
+      - es02
+      - es01
+
+networks:
+ elk-net:  
+
+secrets:
+  elasticsearch.compose:
+    file: ./elasticsearch.yml
+  elastic-certificates.p12:
+    file: ./elastic-certificates.p12
